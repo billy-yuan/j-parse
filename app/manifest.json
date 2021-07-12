@@ -2,5 +2,20 @@
   "name": "J-Parse",
   "description": "Parse a Japanese sentence into words and upload them into a Google sheet.",
   "version": "1.0",
-  "manifest_version": 3
+  "manifest_version": 3,
+  "background": {
+    "service_worker": "background.js"
+  },
+  "commands": {
+    "parse-sentence": {
+      "suggested_key": {"default": "Ctrl+Shift+E"},
+      "description": "Parse and add sentence to Google sheets"
+    }
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["selectText.js"]
+    }
+  ]
 }
