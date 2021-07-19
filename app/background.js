@@ -1,4 +1,5 @@
-const endpoint = "http://localhost:5000/japanese_sentence_parser";
+const PARSER_API_ENDPOINT =
+  "https://jparse-api.herokuapp.com/japanese_sentence_parser";
 const DISCOVERY_DOCS = [
   "https://sheets.googleapis.com/$discovery/rest?version=v4",
 ];
@@ -71,7 +72,7 @@ async function parseSentenceAndAddToSheets(sentence) {
     body: JSON.stringify(data),
   };
 
-  return fetch(endpoint, request)
+  return fetch(PARSER_API_ENDPOINT, request)
     .then((res) => res.json())
     .then((resJSON) => {
       if (resJSON && resJSON.words) {
