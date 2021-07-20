@@ -12,7 +12,7 @@
     "page": "background.html",
     "persistent": false
   },
-  "permissions": ["identity", "storage"],
+  "permissions": ["identity", "storage", "tabs"],
   "commands": {
     "parse-sentence": {
       "suggested_key": {"default": "Ctrl+Shift+E"},

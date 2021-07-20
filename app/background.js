@@ -9,6 +9,7 @@ let SPREADSHEET_ID;
 let RANGE;
 
 let selectedText = "";
+// let selectedTextUrl = "";
 
 function loadOptions() {
   chrome.storage.sync.get(
@@ -31,14 +32,14 @@ function onGAPILoad() {
     .catch((error) => console.log(error));
 }
 
-async function addToSpreadsheet(sentence, words) {
+async function addToSpreadsheet(sentence, words, url) {
   chrome.identity.getAuthToken({ interactive: true }, function (token) {
     gapi.auth.setToken({
       access_token: token,
     });
 
     const body = {
-      values: [createRowArray(sentence, words)],
+      values: [createRowArray(sentence, words, url)],
     };
 
     appendRow(body);
@@ -59,11 +60,7 @@ async function appendRow(body) {
     .catch((error) => console.log("Error", error.body));
 }
 
-async function parseSentenceAndAddToSheets(sentence) {
-  const data = {
-    sentence: sentence,
-  };
-
+async function parseSentenceAndAddToSheets(data) {
   const request = {
     method: "POST",
     headers: {
@@ -76,15 +73,29 @@ async function parseSentenceAndAddToSheets(sentence) {
     .then((res) => res.json())
     .then((resJSON) => {
       if (resJSON && resJSON.words) {
-        addToSpreadsheet(resJSON.sentence, resJSON.words.toString());
+        addToSpreadsheet(resJSON.sentence, resJSON.words.toString(), data.url);
       }
     })
     .catch((error) => console.log(error));
 }
 
-function createRowArray(sentence, words) {
+function createRowArray(sentence, words, url) {
   // TODO: update createRow so that user can customize the row
-  return [sentence, words];
+  return [sentence, words, url];
+}
+
+function getTabUrlPromise() {
+  return new Promise((resolve, reject) => {
+    chrome.tabs.query({ active: true, lastFocusedWindow: true }, (tabs) => {
+      const selectedTextUrl = tabs[0].url;
+
+      try {
+        resolve(selectedTextUrl);
+      } catch (error) {
+        reject(error);
+      }
+    });
+  });
 }
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
@@ -95,7 +106,14 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 chrome.commands.onCommand.addListener((command) => {
   if (command === "parse-sentence") {
     // TODO: Add function that checks whether API key, spreadsheetId, and range are valid
+
     loadOptions();
-    parseSentenceAndAddToSheets(selectedText);
+    getTabUrlPromise().then((tabUrl) => {
+      const data = {
+        sentence: selectedText,
+        url: tabUrl,
+      };
+      parseSentenceAndAddToSheets(data);
+    });
   }
 });
