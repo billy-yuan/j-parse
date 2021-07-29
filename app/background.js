@@ -9,7 +9,6 @@ let SPREADSHEET_ID;
 let RANGE;
 
 let selectedText = "";
-// let selectedTextUrl = "";
 
 function loadOptions() {
   chrome.storage.sync.get(
@@ -32,7 +31,7 @@ function onGAPILoad() {
     .catch((error) => console.log(error));
 }
 
-async function addToSpreadsheet(sentence, words, url) {
+function addToSpreadsheet(sentence, words, url) {
   chrome.identity.getAuthToken({ interactive: true }, function (token) {
     gapi.auth.setToken({
       access_token: token,
@@ -46,7 +45,7 @@ async function addToSpreadsheet(sentence, words, url) {
   });
 }
 
-async function appendRow(body) {
+function appendRow(body) {
   gapi.client.sheets.spreadsheets.values
     .append({
       spreadsheetId: SPREADSHEET_ID,
@@ -56,8 +55,12 @@ async function appendRow(body) {
     })
     .then((response) => {
       console.log(`${response.result.updates.updatedCells} cells appended.`);
+      sendMessageToContentScript(true);
     })
-    .catch((error) => console.log("Error", error.body));
+    .catch((error) => {
+      console.log("Error", error.body);
+      sendMessageToContentScript(false);
+    });
 }
 
 async function parseSentenceAndAddToSheets(data) {
@@ -69,7 +72,7 @@ async function parseSentenceAndAddToSheets(data) {
     body: JSON.stringify(data),
   };
 
-  return fetch(PARSER_API_ENDPOINT, request)
+  await fetch(PARSER_API_ENDPOINT, request)
     .then((res) => res.json())
     .then((resJSON) => {
       if (resJSON && resJSON.words) {
@@ -98,22 +101,33 @@ function getTabUrlPromise() {
   });
 }
 
+function sendMessageToContentScript(success) {
+  const action = success ? "open_dialog_box" : "error";
+
+  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+    chrome.tabs.sendMessage(tabs[0].id, { action: action });
+  });
+}
+
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   selectedText = request;
   return true;
 });
 
 chrome.commands.onCommand.addListener((command) => {
+  if (selectedText.trim() === "") {
+    return;
+  }
   if (command === "parse-sentence") {
     // TODO: Add function that checks whether API key, spreadsheetId, and range are valid
-
     loadOptions();
-    getTabUrlPromise().then((tabUrl) => {
-      const data = {
+    getTabUrlPromise()
+      .then((tabUrl) => ({
         sentence: selectedText,
         url: tabUrl,
-      };
-      parseSentenceAndAddToSheets(data);
-    });
+      }))
+      .then((data) => {
+        parseSentenceAndAddToSheets(data);
+      });
   }
 });
